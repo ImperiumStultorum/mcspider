@@ -1,22 +1,35 @@
 package com.stultorum.architectury.mcspider.utilities
 
 import com.stultorum.architectury.mcspider.utilities.port.AngledPosition
+import com.stultorum.architectury.mcspider.utilities.port.refreshPositionAndAngles
 import net.minecraft.entity.Entity
+import net.minecraft.entity.EntityType
+import net.minecraft.entity.decoration.DisplayEntity
 import net.minecraft.entity.decoration.DisplayEntity.BlockDisplayEntity
+import net.minecraft.entity.decoration.DisplayEntity.TextDisplayEntity
+import net.minecraft.text.Text
 import net.minecraft.util.math.Vec3d
-import org.bukkit.entity.Display
-import org.bukkit.entity.TextDisplay
+import net.minecraft.world.World
 import org.joml.Matrix4f
 import java.io.Closeable
 
-// TODO port
-
 class ModelPart <T : Entity> (
     val clazz : Class<T>,
+    val type: EntityType<T>,
+    val world: World,
     val location : AngledPosition,
     val init : (T) -> Unit = {},
     val update : (T) -> Unit = {}
-)
+) {
+    fun spawn(): T {
+        // todo make this less cursed at some point; probably after port finished
+        val entity = clazz.getConstructor(EntityType::class.java, World::class.java).newInstance(type, world)
+        entity.setPosition(location.toVec3d())
+        entity.setAngles(location.yaw, location.pitch)
+        init(entity)
+        return entity
+    }
+}
 
 class Model {
     val parts = mutableMapOf<Any, ModelPart<out Entity>>()
@@ -34,17 +47,21 @@ class Model {
 }
 
 fun blockModel(
+    world: World,
     location: AngledPosition,
     init: (BlockDisplayEntity) -> Unit = {},
     update: (BlockDisplayEntity) -> Unit = {}
 ) = ModelPart(
     clazz = BlockDisplayEntity::class.java,
+    type = EntityType.BLOCK_DISPLAY,
+    world = world,
     location = location,
     init = init,
     update = update
 )
 
 fun lineModel(
+    world: World,
     location: AngledPosition,
     vector: Vec3d,
     upVector: Vec3d = if (vector.x + vector.z != 0.0) UP_VECTOR else Vec3d(0.0, 0.0, 1.0),
@@ -53,6 +70,7 @@ fun lineModel(
     init: (BlockDisplayEntity) -> Unit = {},
     update: (BlockDisplayEntity) -> Unit = {}
 ) = blockModel(
+    world = world,
     location = location,
     init = {
         it.setTeleportDuration(interpolation)
@@ -70,21 +88,24 @@ fun lineModel(
 )
 
 fun textModel(
-    location: Location,
+    world: World,
+    location: AngledPosition,
     text: String,
     interpolation: Int,
-    init: (TextDisplay) -> Unit = {},
-    update: (TextDisplay) -> Unit = {},
+    init: (TextDisplayEntity) -> Unit = {},
+    update: (TextDisplayEntity) -> Unit = {},
 ) = ModelPart(
-    clazz = TextDisplay::class.java,
+    clazz = TextDisplayEntity::class.java,
+    type = EntityType.TEXT_DISPLAY,
+    world = world,
     location = location,
     init = {
-        it.teleportDuration = interpolation
-        it.billboard = Display.Billboard.CENTER
+        it.setTeleportDuration(interpolation)
+        it.setBillboardMode(DisplayEntity.BillboardMode.CENTER)
         init(it)
     },
     update = {
-        it.text = text
+        it.setText(Text.of(text))
         update(it)
     }
 )
@@ -93,10 +114,9 @@ class ModelPartRenderer<T : Entity>: Closeable {
     var entity: T? = null
 
     fun render(part: ModelPart<T>) {
-        entity = (entity ?: spawnEntity(part.location, part.clazz) {
-            part.init(it)
-        }).apply {
-            this.teleport(part.location)
+        if (entity == null) entity = part.spawn()
+        entity = entity!!.apply {
+            this.refreshPositionAndAngles(part.location)
             part.update(this)
         }
     }
@@ -106,7 +126,7 @@ class ModelPartRenderer<T : Entity>: Closeable {
     }
 
     override fun close() {
-        entity?.remove()
+        entity?.remove(Entity.RemovalReason.DISCARDED)
         entity = null
     }
 }
@@ -118,7 +138,7 @@ class ModelRenderer: Closeable {
 
     override fun close() {
         for (entity in rendered.values) {
-            entity.remove()
+            entity.remove(Entity.RemovalReason.DISCARDED)
         }
         rendered.clear()
         used.clear()
@@ -132,7 +152,7 @@ class ModelRenderer: Closeable {
         val toRemove = rendered.keys - used
         for (key in toRemove) {
             val entity = rendered[key]!!
-            entity.remove()
+            entity.remove(Entity.RemovalReason.DISCARDED)
             rendered.remove(key)
         }
         used.clear()
@@ -149,21 +169,19 @@ class ModelRenderer: Closeable {
         val oldEntity = rendered[id]
         if (oldEntity != null) {
             // check if the entity is of the same type
-            if (oldEntity.type.entityClass == template.clazz) {
-                oldEntity.teleport(template.location)
+            if (oldEntity.type == template.type) {
+                oldEntity.refreshPositionAndAngles(template.location)
                 @Suppress("UNCHECKED_CAST")
                 template.update(oldEntity as T)
                 return
             }
 
-            oldEntity.remove()
+            oldEntity.remove(Entity.RemovalReason.DISCARDED)
             rendered.remove(id)
         }
 
-        val entity = spawnEntity(template.location, template.clazz) {
-            template.init(it)
-            template.update(it)
-        }
+        val entity = template.spawn()
+        template.update(entity)
         rendered[id] = entity
     }
 }
