@@ -1,13 +1,20 @@
 package com.stultorum.architectury.mcspider
 
+import com.stultorum.architectury.mcspider.items.*
 import com.stultorum.architectury.mcspider.spider.*
+import dev.architectury.registry.registries.RegistrarManager
 import net.minecraft.block.Blocks
+import net.minecraft.item.Item
+import net.minecraft.registry.RegistryKeys
+import net.minecraft.util.Identifier
 import org.slf4j.LoggerFactory
 
 object McSpider {
     const val MOD_ID = "mcspider"
 
-    public lateinit var instance: McSpiderInstance
+    private val manager: RegistrarManager by lazy { RegistrarManager.get(MOD_ID) }
+
+    lateinit var instance: McSpiderInstance
 
     internal val renderedBlockState = Blocks.NETHERITE_BLOCK.defaultState
     internal val options: MutableMap<String, Any> = mutableMapOf(
@@ -34,5 +41,14 @@ object McSpider {
     fun init() {
         val logger = LoggerFactory.getLogger(MOD_ID)
         instance = McSpiderInstance(logger)
+
+        val itemRegistry = manager.get(RegistryKeys.ITEM)
+        itemRegistry.register(Identifier.of(MOD_ID, "come_here")) { ComeHereItem(Item.Settings().maxCount(1)) }
+        itemRegistry.register(Identifier.of(MOD_ID, "debug_toggle")) { DebugToggleItem(Item.Settings().maxCount(1)) }
+        itemRegistry.register(Identifier.of(MOD_ID, "gait_control")) { GaitControlItem(Item.Settings().maxCount(1)) }
+        itemRegistry.register(Identifier.of(MOD_ID, "laser_pointer")) { LaserPointerItem(Item.Settings().maxCount(1)) }
+        itemRegistry.register(Identifier.of(MOD_ID, "leg_toggle")) { LegToggleItem(Item.Settings().maxCount(1)) }
+        itemRegistry.register(Identifier.of(MOD_ID, "renderer_control")) { RendererControlItem(Item.Settings().maxCount(1)) }
+        itemRegistry.register(Identifier.of(MOD_ID, "summon_spider")) { SummonSpiderItem(Item.Settings().maxCount(1)) }
     }
 }
