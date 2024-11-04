@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "${mod_id}",
+  "version": "${version}",
+  "name": "${name}",
+  "description": "${desc}",
+  "authors": [
+    "Me!"
+  ],
+  "contact": {
+    "sources": "${source}"
+  },
+  "license": "${license}",
+  "icon": "assets/examplemod/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      {
+        "adapter": "kotlin",
+        "value": "com.stultorum.architectury.mcspider.fabric.McSpiderFabric"
+      }
+    ]
+  },
+  "mixins": [
+    "mcspider.mixins.json",
+    "mcspider-common.mixins.json"
+  ],
+  "depends": {
+    "fabric": "*",
+    "minecraft": ">=${vMinecraft}",
+    "architectury": ">=${vArchitectury}",
+    "fabric-language-kotlin": ">=${vFabricKotlin}"
+  }
+}
