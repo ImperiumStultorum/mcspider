@@ -6,11 +6,11 @@ import net.minecraftforge.fml.common.Mod
 import thedarkcolour.kotlinforforge.forge.MOD_BUS
 import thedarkcolour.kotlinforforge.forge.MOD_CONTEXT
 
-@Mod(ExampleMod.MOD_ID)
+@Mod(McSpider.MOD_ID)
 object McSpiderForge {
     init {
         // Submit our event bus to let architectury register our content on the right time
-        EventBuses.registerModEventBus(ExampleMod.MOD_ID, MOD_BUS)
-        ExampleMod.init()
+        EventBuses.registerModEventBus(McSpider.MOD_ID, MOD_BUS)
+        McSpider.init()
     }
 }

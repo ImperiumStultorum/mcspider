@@ -1,6 +1,7 @@
 accessWidener   v2  named
 # So many DisplayEntity NBT modifying methods...
 accessible method net/minecraft/entity/decoration/DisplayEntity setTeleportDuration (I)V
+accessible method net/minecraft/entity/decoration/DisplayEntity setStartInterpolation (I)V
 accessible method net/minecraft/entity/decoration/DisplayEntity setInterpolationDuration (I)V
 accessible method net/minecraft/entity/decoration/DisplayEntity getTransformation (Lnet/minecraft/entity/data/DataTracker;)Lnet/minecraft/util/math/AffineTransformation;
 accessible method net/minecraft/entity/decoration/DisplayEntity setTransformation (Lnet/minecraft/util/math/AffineTransformation;)V

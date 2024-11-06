@@ -1,7 +1,9 @@
 package com.stultorum.architectury.mcspider
 
 import com.stultorum.architectury.mcspider.items.*
+import com.stultorum.architectury.mcspider.platform.tickTimers
 import com.stultorum.architectury.mcspider.spider.*
+import dev.architectury.event.events.common.TickEvent
 import dev.architectury.registry.registries.RegistrarManager
 import net.minecraft.block.Blocks
 import net.minecraft.item.Item
@@ -41,6 +43,8 @@ object McSpider {
     fun init() {
         val logger = LoggerFactory.getLogger(MOD_ID)
         instance = McSpiderInstance(logger)
+
+        TickEvent.SERVER_POST.register { it.tickTimers() }
 
         val itemRegistry = manager.get(RegistryKeys.ITEM)
         itemRegistry.register(Identifier.of(MOD_ID, "come_here")) { ComeHereItem(Item.Settings().maxCount(1)) }

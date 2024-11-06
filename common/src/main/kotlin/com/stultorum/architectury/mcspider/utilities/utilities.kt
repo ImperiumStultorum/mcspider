@@ -1,79 +1,67 @@
 package com.stultorum.architectury.mcspider.utilities
 
-import com.heledron.spideranimation.SpiderAnimationPlugin
+import com.stultorum.architectury.mcspider.platform.repeatTask
+import com.stultorum.architectury.mcspider.platform.runTaskLater
 import com.stultorum.architectury.mcspider.utilities.port.AngledPosition
 import com.stultorum.architectury.mcspider.utilities.port.distance
+import dev.architectury.event.CompoundEventResult
+import dev.architectury.event.EventResult
+import dev.architectury.event.events.common.EntityEvent
+import dev.architectury.event.events.common.InteractionEvent
+import net.minecraft.entity.Entity
 import net.minecraft.entity.decoration.DisplayEntity
 import net.minecraft.entity.decoration.DisplayEntity.BlockDisplayEntity
 import net.minecraft.entity.player.PlayerEntity
+import net.minecraft.item.ItemStack
 import net.minecraft.text.Text
+import net.minecraft.util.Hand
 import net.minecraft.util.hit.BlockHitResult
 import net.minecraft.util.math.AffineTransformation
 import net.minecraft.util.math.Vec3d
 import net.minecraft.world.World
-import org.bukkit.ChatColor
-import org.bukkit.FluidCollisionMode
-import org.bukkit.entity.Entity
-import org.bukkit.entity.Player
-import org.bukkit.event.Listener
-import org.bukkit.event.block.Action
-import org.bukkit.inventory.EquipmentSlot
-import org.bukkit.inventory.ItemStack
 import org.joml.*
 import java.io.Closeable
 
 
 fun runLater(delay: Long, task: () -> Unit): Closeable {
-    val plugin = SpiderAnimationPlugin.instance
-    val handler = plugin.server.scheduler.runTaskLater(plugin, task, delay)
-    return Closeable {
-        handler.cancel()
-    }
+    return runTaskLater(delay) { task.invoke() }
 }
 
 fun interval(delay: Long, period: Long, task: () -> Unit): Closeable {
-    val plugin = SpiderAnimationPlugin.instance
-    val handler = plugin.server.scheduler.runTaskTimer(plugin, task, delay, period)
-    return Closeable {
-        handler.cancel()
-    }
+    return repeatTask(delay, period) { task.invoke() }
 }
 
-fun addEventListener(listener: Listener): Closeable {
-    val plugin = SpiderAnimationPlugin.instance
-    plugin.server.pluginManager.registerEvents(listener, plugin)
-    return Closeable {
-        org.bukkit.event.HandlerList.unregisterAll(listener)
-    }
-}
 
-fun onInteractEntity(listener: (Player, Entity, EquipmentSlot) -> Unit): Closeable {
-    return addEventListener(object : Listener {
-        @org.bukkit.event.EventHandler
-        fun onInteract(event: org.bukkit.event.player.PlayerInteractEntityEvent) {
-            listener(event.player, event.rightClicked, event.hand)
-        }
-    })
+fun onInteractEntity(listener: (PlayerEntity, Entity, Hand) -> Unit): Closeable {
+    val actual = InteractionEvent.InteractEntity { player, entity, hand ->
+        listener.invoke(player, entity, hand)
+        EventResult.pass()
+    }
+    InteractionEvent.INTERACT_ENTITY.register(actual)
+    return Closeable { InteractionEvent.INTERACT_ENTITY.unregister(actual) }
 }
 
 fun onSpawnEntity(listener: (Entity, World) -> Unit): Closeable {
-    return addEventListener(object : Listener {
-        @org.bukkit.event.EventHandler
-        fun onSpawn(event: org.bukkit.event.entity.EntitySpawnEvent) {
-            listener(event.entity, event.entity.world)
-        }
-    })
+    val actual = EntityEvent.Add { entity, world ->
+        listener.invoke(entity, world)
+        EventResult.pass()
+    }
+    EntityEvent.ADD.register(actual)
+    return Closeable { EntityEvent.ADD.unregister(actual) }
 }
 
-fun onGestureUseItem(listener: (Player, ItemStack) -> Unit): Closeable {
-    return addEventListener(object : Listener {
-        @org.bukkit.event.EventHandler
-        fun onPlayerInteract(event: org.bukkit.event.player.PlayerInteractEvent) {
-            if (event.action != Action.RIGHT_CLICK_AIR && event.action != Action.RIGHT_CLICK_BLOCK) return
-            if (event.action == Action.RIGHT_CLICK_BLOCK && !(event.clickedBlock?.type?.isInteractable == false || event.player.isSneaking)) return
-            listener(event.player, event.item ?: return)
-        }
-    })
+fun onGestureUseItem(listener: (PlayerEntity, ItemStack) -> Unit): Closeable {
+    val actual = InteractionEvent.RightClickItem { player, hand ->
+        // todo [after MVP] do these `if`s need to be reimplemented?
+        // if (event.action != Action.RIGHT_CLICK_AIR && event.action != Action.RIGHT_CLICK_BLOCK) return
+        // if (event.action == Action.RIGHT_CLICK_BLOCK && !(event.clickedBlock?.type?.isInteractable == false || event.player.isSneaking)) return
+        val item = player.getStackInHand(hand)
+        // todo [after MVP] is the isEmpty check needed?
+        if (!item.isEmpty) listener.invoke(player, item)
+        CompoundEventResult.pass()
+    }
+    InteractionEvent.RIGHT_CLICK_ITEM.register(actual)
+    return Closeable { InteractionEvent.RIGHT_CLICK_ITEM.unregister(actual) }
 }
 
 
@@ -99,15 +87,6 @@ class EventEmitter {
     fun emit() {
         for (listener in listeners) listener()
     }
-}
-
-
-fun createNamedItem(material: org.bukkit.Material, name: String): ItemStack {
-    val item = ItemStack(material)
-    val itemMeta = item.itemMeta ?: throw Exception("ItemMeta is null")
-    itemMeta.setItemName(ChatColor.RESET.toString() + name)
-    item.itemMeta = itemMeta
-    return item
 }
 
 fun World.firstPlayer(): PlayerEntity? {
@@ -170,7 +149,7 @@ fun transformFromMatrix(matrix: Matrix4f): AffineTransformation {
 fun applyTransformationWithInterpolation(entity: BlockDisplayEntity, transformation: AffineTransformation) {
     if (DisplayEntity.getTransformation(entity.dataTracker) != transformation) {
         entity.setTransformation(transformation)
-        entity.setStartInterpolation(0);
+        entity.setStartInterpolation(0)
     }
 }
 
