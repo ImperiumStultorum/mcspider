@@ -8,6 +8,7 @@ import dev.architectury.event.CompoundEventResult
 import dev.architectury.event.EventResult
 import dev.architectury.event.events.common.EntityEvent
 import dev.architectury.event.events.common.InteractionEvent
+import net.minecraft.block.ShapeContext
 import net.minecraft.entity.Entity
 import net.minecraft.entity.decoration.DisplayEntity
 import net.minecraft.entity.decoration.DisplayEntity.BlockDisplayEntity
@@ -18,8 +19,12 @@ import net.minecraft.util.Hand
 import net.minecraft.util.hit.BlockHitResult
 import net.minecraft.util.math.AffineTransformation
 import net.minecraft.util.math.Vec3d
+import net.minecraft.world.RaycastContext
 import net.minecraft.world.World
-import org.joml.*
+import org.joml.AxisAngle4f
+import org.joml.Matrix4f
+import org.joml.Quaternionf
+import org.joml.Vector3f
 import java.io.Closeable
 
 
@@ -102,8 +107,9 @@ fun sendActionBar(player: PlayerEntity, message: String) {
 }
 
 fun World.raycastGround(location: AngledPosition, direction: Vec3d, maxDistance: Double): BlockHitResult? {
-    // TODO fix gooey insides
-    return location.world!!.rayTraceBlocks(location, direction, maxDistance, FluidCollisionMode.NEVER, true)
+    // TODO test. This is one of the things I'm least sure about.
+    val endPos = location.toVec3d().add(direction.normalize().multiply(maxDistance))
+    return this.raycast(RaycastContext(location.toVec3d(), endPos, RaycastContext.ShapeType.COLLIDER, RaycastContext.FluidHandling.NONE, ShapeContext.absent()))
 }
 
 fun World.isOnGround(location: AngledPosition): Boolean {
@@ -113,13 +119,13 @@ fun World.isOnGround(location: AngledPosition): Boolean {
 data class CollisionResult(val position: Vec3d, val offset: Vec3d)
 
 fun World.resolveCollision(location: AngledPosition, direction: Vec3d): CollisionResult? {
-    // TODO fix gooey insides
-    val ray = location.world!!.rayTraceBlocks(location.clone().subtract(direction), direction, direction.length(), FluidCollisionMode.NEVER, true)
-    if (ray != null) {
-        val newLocation = ray.hitPosition.toLocation(location.world!!)
-        return CollisionResult(newLocation.toVector(), ray.hitPosition.subtract(location.toVector()))
+    // TODO test. This is one of the things I'm least sure about
+    val newStart = location.toVec3d().subtract(direction) // while I'm not sure why we do this, it's what the original code seems to do
+    val endPos = newStart.add(direction) // The original code has the maxDistance set to direction.length, implying we don't need to .normalize().multiply()
+    val hit = this.raycast(RaycastContext(newStart, endPos, RaycastContext.ShapeType.COLLIDER, RaycastContext.FluidHandling.NONE, ShapeContext.absent()))
+    if (hit != null) {
+        return CollisionResult(hit.pos, hit.pos.subtract(location.toVec3d()))
     }
-
     return null
 }
 
