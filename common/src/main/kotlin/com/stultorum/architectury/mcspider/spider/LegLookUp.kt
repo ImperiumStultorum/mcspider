@@ -1,7 +1,5 @@
 package com.stultorum.architectury.mcspider.spider
 
-// TODO port
-
 object LegLookUp {
     fun diagonalPairs(legs: List<Int>): List<List<Int>> {
         return legs.map { diagonal(it) + it }

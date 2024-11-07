@@ -2,14 +2,14 @@ package com.stultorum.architectury.mcspider.spider
 
 import com.stultorum.architectury.mcspider.utilities.horizontalLength
 import com.stultorum.architectury.mcspider.utilities.moveTowards
-import com.stultorum.architectury.mcspider.spider.*
 import com.stultorum.architectury.mcspider.utilities.port.AngledPosition
-import org.bukkit.Location
-import org.bukkit.util.Vector
+import com.stultorum.architectury.mcspider.utilities.port.setY
+import net.minecraft.util.math.Vec3d
+import net.minecraft.world.World
 import java.io.Closeable
-import kotlin.math.*
-
-// todo Port
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.atan2
 
 interface SpiderComponent : Closeable {
     fun update() {}
@@ -109,7 +109,7 @@ class Gait(
 }
 
 
-class Spider(var location: AngledPosition, val bodyPlan: BodyPlan): Closeable {
+class Spider(val world: World, var location: AngledPosition, val bodyPlan: BodyPlan): Closeable {
     var gallop = false
     var showDebugVisuals = false
 
@@ -125,11 +125,11 @@ class Spider(var location: AngledPosition, val bodyPlan: BodyPlan): Closeable {
     var isRotatingPitch = false; private set
     var rotateVelocity = 0.0; private set
 
-    val velocity = Vector(0.0, 0.0, 0.0)
+    var velocity: Vec3d = Vec3d.ZERO
 
     val body = SpiderBody(this)
 
-    val cloak = Cloak(this)
+//    val cloak = Cloak(this)
     val sound = SoundEffects(this)
     val mount = Mountable(this)
     val pointDetector = PointDetector(this)
@@ -147,15 +147,16 @@ class Spider(var location: AngledPosition, val bodyPlan: BodyPlan): Closeable {
         getComponents().forEach { it.close() }
     }
 
-    fun teleport(newLocation: Location) {
-        val diff = newLocation.toVector().subtract(location.toVector())
+    fun teleport(newLocation: AngledPosition) {
+        val diff = newLocation.toVec3d().subtract(location.toVec3d())
 
         location = newLocation
         for (leg in body.legs) leg.endEffector.add(diff)
+        // todo this doesn't seem to rotate according to the new position, in their code or ours. Should that be changed?
     }
 
     fun getComponents() = iterator<SpiderComponent> {
-        yield(cloak)
+//        yield(cloak)
         yield(body)
         yield(sound)
         yield(mount)
@@ -174,18 +175,17 @@ class Spider(var location: AngledPosition, val bodyPlan: BodyPlan): Closeable {
         for (component in getComponents()) component.render()
     }
 
-    fun relativePosition(point: Vector, pitch: Float = location.pitch): Vector {
-        return location.toVector().add(relativeVector(point, pitch))
+    fun relativePosition(point: Vec3d, pitch: Float = location.pitch): Vec3d {
+        return location.toVec3d().add(relativeVector(point, pitch))
     }
 
-    fun relativeVector(point: Vector, pitch: Float = location.pitch): Vector {
-        val out = point.clone()
-        out.rotateAroundX(Math.toRadians(pitch.toDouble()))
-        out.rotateAroundY(-Math.toRadians(location.yaw.toDouble()))
-        return out
+    fun relativeVector(point: Vec3d, pitch: Float = location.pitch): Vec3d {
+        return point
+            .rotateX(Math.toRadians(pitch.toDouble()).toFloat())
+            .rotateY(-Math.toRadians(location.yaw.toDouble()).toFloat())
     }
 
-    private fun rotateTowards(targetDirection: Vector) {
+    private fun rotateTowards(targetDirection: Vec3d) {
         // pitch
         val targetPitch = -Math.toDegrees(atan2(targetDirection.y, horizontalLength(targetDirection))).coerceIn(-30.0, 30.0)
         val oldPitch = location.pitch
@@ -215,17 +215,17 @@ class Spider(var location: AngledPosition, val bodyPlan: BodyPlan): Closeable {
         rotateVelocity = -(newYaw - oldYaw)
     }
 
-    private fun walkAt(targetVelocity: Vector) {
+    private fun walkAt(targetVelocity: Vec3d) {
         val acceleration = gait.walkAcceleration// * body.legs.filter { it.isGrounded() }.size / body.legs.size
-        val target = targetVelocity.clone()
+        val target = targetVelocity
 
         isWalking = true
 
         if (body.legs.any { it.isUncomfortable && !it.isMoving }) { //  && !it.targetOutsideComfortZone
             val scaled = target.setY(velocity.y).multiply(gait.uncomfortableSpeedMultiplier)
-            velocity.moveTowards(scaled, acceleration)
+            velocity = velocity.moveTowards(scaled, acceleration)
         } else {
-            velocity.moveTowards(target.setY(velocity.y), acceleration)
+            velocity = velocity.moveTowards(target.setY(velocity.y), acceleration)
             isWalking = velocity.x != 0.0 && velocity.z != 0.0
         }
     }

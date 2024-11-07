@@ -3,6 +3,7 @@ package com.stultorum.architectury.mcspider
 import com.stultorum.architectury.mcspider.items.*
 import com.stultorum.architectury.mcspider.platform.tickTimers
 import com.stultorum.architectury.mcspider.spider.*
+import dev.architectury.event.events.common.CommandRegistrationEvent
 import dev.architectury.event.events.common.TickEvent
 import dev.architectury.registry.registries.RegistrarManager
 import net.minecraft.block.Blocks
@@ -44,6 +45,10 @@ object McSpider {
         val logger = LoggerFactory.getLogger(MOD_ID)
         instance = McSpiderInstance(logger)
 
+        CommandRegistrationEvent.EVENT.register { dispatcher, _, _ ->
+            dispatcher.register(spiderCommand)
+        }
+
         TickEvent.SERVER_POST.register { it.tickTimers() }
 
         val itemRegistry = manager.get(RegistryKeys.ITEM)
@@ -54,5 +59,7 @@ object McSpider {
         itemRegistry.register(Identifier.of(MOD_ID, "leg_toggle")) { LegToggleItem(Item.Settings().maxCount(1)) }
         itemRegistry.register(Identifier.of(MOD_ID, "renderer_control")) { RendererControlItem(Item.Settings().maxCount(1)) }
         itemRegistry.register(Identifier.of(MOD_ID, "summon_spider")) { SummonSpiderItem(Item.Settings().maxCount(1)) }
+
+        instance.enable()
     }
 }

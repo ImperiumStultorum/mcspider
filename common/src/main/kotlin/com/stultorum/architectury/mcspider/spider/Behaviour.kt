@@ -1,51 +1,52 @@
 package com.stultorum.architectury.mcspider.spider
 
 import com.stultorum.architectury.mcspider.utilities.horizontalDistance
-
-// TODO port
+import com.stultorum.architectury.mcspider.utilities.port.AngledPosition
+import com.stultorum.architectury.mcspider.utilities.port.setY
+import net.minecraft.util.math.Vec3d
 
 interface Behaviour {
-    val targetVelocity: Vector
-    val targetDirection: Vector
+    val targetVelocity: Vec3d
+    val targetDirection: Vec3d
     fun update()
 }
 
 class StayStillBehaviour(val spider: Spider) : Behaviour {
-    override var targetVelocity = Vector(0.0, 0.0, 0.0)
-    override var targetDirection = Vector(0.0, 0.0, 0.0)
+    override var targetVelocity: Vec3d = Vec3d.ZERO
+    override var targetDirection: Vec3d = Vec3d.ZERO
 
     override fun update() {
-        targetVelocity = Vector(0.0, 0.0, 0.0)
-        targetDirection = spider.location.direction.clone().setY(0.0)
+        targetVelocity = Vec3d.ZERO
+        targetDirection = spider.location.toDirection().setY(0.0)
     }
 }
 
-class TargetBehaviour(val spider: Spider, val target: Location, val distance: Double) : Behaviour {
-    override var targetVelocity = Vector(0.0, 0.0, 0.0)
-    override var targetDirection = Vector(0.0, 0.0, 0.0)
+class TargetBehaviour(val spider: Spider, val target: AngledPosition, val distance: Double) : Behaviour {
+    override var targetVelocity: Vec3d = Vec3d.ZERO
+    override var targetDirection: Vec3d = Vec3d.ZERO
 
     override fun update() {
-        targetDirection = target.toVector().clone().subtract(spider.location.toVector()).normalize()
+        targetDirection = target.toVec3d().subtract(spider.location.toVec3d()).normalize()
 
         val currentSpeed = spider.velocity.length()
 
         val decelerateDistance = (currentSpeed * currentSpeed) / (2 * spider.gait.walkAcceleration)
 
-        val currentDistance = horizontalDistance(spider.location.toVector(), target.toVector())
+        val currentDistance = horizontalDistance(spider.location.toVec3d(), target.toVec3d())
 
         targetVelocity = if (currentDistance > distance + decelerateDistance) {
-            targetDirection.clone().multiply(spider.gait.walkSpeed)
+            targetDirection.multiply(spider.gait.walkSpeed)
         } else {
-            Vector(0.0, 0.0, 0.0)
+            Vec3d.ZERO
         }
     }
 }
 
-class DirectionBehaviour(val spider: Spider, override val targetDirection: Vector, val walkDirection: Vector) :
+class DirectionBehaviour(val spider: Spider, override val targetDirection: Vec3d, val walkDirection: Vec3d) :
     Behaviour {
-    override var targetVelocity = Vector(0.0, 0.0, 0.0)
+    override var targetVelocity: Vec3d = Vec3d.ZERO
 
     override fun update() {
-        targetVelocity = walkDirection.clone().multiply(spider.gait.walkSpeed)
+        targetVelocity = walkDirection.multiply(spider.gait.walkSpeed)
     }
 }

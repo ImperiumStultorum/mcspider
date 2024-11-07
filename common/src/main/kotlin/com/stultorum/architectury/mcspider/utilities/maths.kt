@@ -25,10 +25,6 @@ fun Vec3d.moveTowards(target: Vec3d, constant: Double): Vec3d {
     }
 }
 
-fun Vec3d.lerp(target: Vec3d, factor: Double): Vec3d {
-    return this.add(target.subtract(this).multiply(factor))
-}
-
 // https://stackoverflow.com/a/31276717
 fun Vec3d.rotateAroundAxis(axis: Vec3d, theta: Double): Vec3d {
     val x = this.x
@@ -76,11 +72,11 @@ fun averageVector(vectors: List<Vec3d>): Vec3d {
 
 
 
-//class SplitDistance(val horizontal: Double, val vertical: Double) {
-//    fun contains(origin: Vec3d, point: Vec3d): Boolean {
-//        return horizontalDistance(origin, point) <= horizontal && verticalDistance(origin, point) <= vertical
-//    }
-//}
+class SplitDistance(val horizontal: Double, val vertical: Double) {
+    fun contains(origin: Vec3d, point: Vec3d): Boolean {
+        return horizontalDistance(origin, point) <= horizontal && verticalDistance(origin, point) <= vertical
+    }
+}
 
 val DOWN_VECTOR = Vec3d(0.0, -1.0, 0.0)
 val UP_VECTOR = Vec3d(0.0, 1.0, 0.0)
@@ -104,6 +100,7 @@ fun pointInPolygon(point: Vec2f, polygon: List<Vec2f>): Boolean {
     return count % 2 == 1
 }
 
+// todo consider changing back to Vec2d
 fun nearestPointInPolygon(point: Vec2f, polygon: List<Vec2f>): Vec2f {
     var closest = polygon[0]
     var closestDistance = point.distance(closest)
@@ -112,7 +109,7 @@ fun nearestPointInPolygon(point: Vec2f, polygon: List<Vec2f>): Vec2f {
         val a = polygon[i]
         val b = polygon[(i + 1) % polygon.size]
 
-        val closestOnLine = nearestPointOnClampedLine(point, a, b) ?: continue
+        val closestOnLine = nearestPointOnClampedLine(point, a, b)
         val distance = point.distance(closestOnLine)
 
         if (distance < closestDistance) {

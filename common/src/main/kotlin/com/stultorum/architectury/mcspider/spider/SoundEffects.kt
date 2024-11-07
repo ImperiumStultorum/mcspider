@@ -1,10 +1,11 @@
 package com.stultorum.architectury.mcspider.spider
 
-import com.heledron.spideranimation.utilities.playSound
-import org.bukkit.Sound
+import com.stultorum.architectury.mcspider.utilities.port.playSound
+import net.minecraft.sound.SoundCategory
+import net.minecraft.sound.SoundEvents
 import java.io.Closeable
 
-// TODO port
+private val soundCategory = SoundCategory.NEUTRAL
 
 class SoundEffects(val spider: Spider) : SpiderComponent {
     var closeables = mutableListOf<Closeable>()
@@ -16,32 +17,31 @@ class SoundEffects(val spider: Spider) : SpiderComponent {
 
     init {
         closeables += spider.body.onHitGround.listen {
-            playSound(spider.location, Sound.BLOCK_NETHERITE_BLOCK_FALL, 1.0f, .8f)
+            spider.world.playSound(spider.location.toVec3d(), SoundEvents.BLOCK_NETHERITE_BLOCK_FALL, soundCategory, 1f, .8f, true)
         }
 
         closeables += spider.body.onGetHitByTrident.listen {
-            playSound(spider.location, Sound.ENTITY_ZOMBIE_ATTACK_IRON_DOOR, .5f, 1.0f)
+            spider.world.playSound(spider.location.toVec3d(), SoundEvents.ENTITY_ZOMBIE_ATTACK_IRON_DOOR, soundCategory, .5f, 1f, true)
         }
 
-        closeables += spider.cloak.onToggle.listen {
-            playSound(spider.location, Sound.BLOCK_LODESTONE_PLACE, 1.0f, 0.0f)
-        }
-
-        closeables += spider.cloak.onCloakDamage.listen {
-            playSound(spider.location, Sound.BLOCK_RESPAWN_ANCHOR_DEPLETE, .5f, 1.5f)
-            playSound(spider.location, Sound.BLOCK_LODESTONE_PLACE, 0.1f, 0.0f)
-            playSound(spider.location, Sound.ENTITY_ZOMBIE_VILLAGER_CURE, .02f, 1.5f)
-        }
+//        closeables += spider.cloak.onToggle.listen {
+//            spider.world.playSound(spider.location.toVec3d(), SoundEvents.BLOCK_LODESTONE_PLACE, soundCategory, 1f, 0f, true)
+//        }
+//
+//        closeables += spider.cloak.onCloakDamage.listen {
+//            spider.world.playSound(spider.location.toVec3d(), SoundEvents.BLOCK_RESPAWN_ANCHOR_DEPLETE.value(), soundCategory, .5f, 1.5f, true)
+//            spider.world.playSound(spider.location.toVec3d(), SoundEvents.BLOCK_LODESTONE_PLACE, soundCategory, .1f, 0f, true)
+//            spider.world.playSound(spider.location.toVec3d(), SoundEvents.ENTITY_ZOMBIE_VILLAGER_CURE, soundCategory, .02f, 1.5f, true)
+//        }
 
         for (leg in spider.body.legs) {
             // Step sound effect
             closeables += leg.onStep.listen {
-                val location = leg.endEffector.toLocation(spider.location.world!!)
+                val location = leg.endEffector
                 val volume = .3f
                 val pitch = 1.0f + Math.random().toFloat() * 0.1f
-                playSound(location, Sound.BLOCK_NETHERITE_BLOCK_STEP, volume, pitch)
+                spider.world.playSound(location, SoundEvents.BLOCK_NETHERITE_BLOCK_STEP, soundCategory, volume, pitch, true)
             }
-
         }
     }
 }

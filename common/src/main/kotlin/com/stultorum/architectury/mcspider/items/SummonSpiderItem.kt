@@ -14,11 +14,11 @@ class SummonSpiderItem(settings: Settings): Item(settings) {
     override fun useOnBlock(context: ItemUsageContext): ActionResult {
         val player = context.player!!
         if (McSpiderState.spider == null) {
-            McSpiderState.spider = McSpiderState.createSpider(AngledPosition(context.hitPos, Vec2f(player.pitch, player.yaw)))
+            if (!context.world.isClient) McSpiderState.spider = McSpiderState.createSpider(context.world, AngledPosition(context.hitPos, Vec2f(player.pitch, player.yaw)))
             context.world.playSound(player, context.blockPos, SoundEvents.BLOCK_NETHERITE_BLOCK_PLACE, SoundCategory.NEUTRAL, 1f, 1f)
             sendActionBar(player, "Spider created")
         } else {
-            McSpiderState.spider = null
+            if (!context.world.isClient) McSpiderState.spider = null
             sendActionBar(player, "Spider removed")
         }
         return ActionResult.SUCCESS_NO_ITEM_USED

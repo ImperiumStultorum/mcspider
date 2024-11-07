@@ -6,13 +6,14 @@ import com.stultorum.architectury.mcspider.utilities.port.setY
 import net.minecraft.block.Block
 import net.minecraft.block.Blocks
 import net.minecraft.entity.decoration.Brightness
-import net.minecraft.entity.decoration.DisplayEntity
 import net.minecraft.util.math.Vec2f
 import net.minecraft.util.math.Vec3d
+import net.minecraft.world.World
 import java.io.Closeable
 
 
 class KinematicChainVisualizer(
+    val world: World,
     val root: AngledPosition,
     val segments: List<ChainSegment>
 ): Closeable {
@@ -45,9 +46,9 @@ class KinematicChainVisualizer(
     }
 
     companion object {
-        fun create(segments: Int, length: Double, root: AngledPosition): KinematicChainVisualizer {
+        fun create(world: World, segments: Int, length: Double, root: AngledPosition): KinematicChainVisualizer {
             val segmentList = (0 until segments).map { ChainSegment(root.toVec3d(), length) }
-            return KinematicChainVisualizer(root, segmentList)
+            return KinematicChainVisualizer(world, root, segmentList)
         }
     }
 
@@ -155,6 +156,7 @@ class KinematicChainVisualizer(
             val location = AngledPosition(segment.position.subtract(vector), Vec2f.ZERO)
 
             model.add(i, lineModel(
+                world = world,
                 location = location,
                 vector = vector,
                 thickness = thickness,
@@ -217,12 +219,14 @@ class KinematicChainVisualizer(
                 .add(crossProduct.rotateAroundAxis(arrow, Math.toRadians(-90.0)).multiply(.5))
 
             model.add("arrow_length", textModel(
+                world = world,
                 location = AngledPosition(arrowCenter, Vec2f.ZERO),
                 text = String.format("%.2f", arrow.length()),
                 interpolation = 3,
             ))
 
             model.add("arrow", arrowTemplate(
+                world = world,
                 location = AngledPosition(arrowStart, Vec2f.ZERO),
                 vector = arrow,
                 thickness = .101f,
@@ -230,17 +234,18 @@ class KinematicChainVisualizer(
             ))
         }
 
-        model.add("root", pointTemplate(root, Blocks.DIAMOND_BLOCK))
+        model.add("root", pointTemplate(world, root, Blocks.DIAMOND_BLOCK))
 
         for (i in renderedSegments.indices) {
             val segment = renderedSegments[i]
-            model.add("p$i", pointTemplate(AngledPosition(segment.position, Vec2f.ZERO), Blocks.EMERALD_BLOCK))
+            model.add("p$i", pointTemplate(world, AngledPosition(segment.position, Vec2f.ZERO), Blocks.EMERALD_BLOCK))
 
             val prev = renderedSegments.getOrNull(i - 1)?.position ?: root.toVec3d()
 
             val (a,b) = prev to segment.position
 
             model.add(i, lineModel(
+                world = world,
                 location = AngledPosition(a, Vec2f.ZERO),
                 vector = b.subtract(a),
                 thickness = .1f,
@@ -256,7 +261,8 @@ class KinematicChainVisualizer(
     }
 }
 
-fun pointTemplate(location: AngledPosition, block: Block) = blockModel(
+fun pointTemplate(world: World, location: AngledPosition, block: Block) = blockModel(
+    world = world,
     location = location,
     init = {
         it.setBlockState(block.defaultState)
@@ -267,12 +273,14 @@ fun pointTemplate(location: AngledPosition, block: Block) = blockModel(
 )
 
 fun arrowTemplate(
+    world: World,
     location: AngledPosition,
     vector: Vec3d,
     thickness: Float,
     interpolation: Int
 ): Model {
     val line = lineModel(
+        world = world,
         location = location,
         vector = vector,
         thickness = thickness,
@@ -293,6 +301,7 @@ fun arrowTemplate(
 
 
     val top = lineModel(
+        world = world,
         location = tip,
         vector = tipDirection.rotateAroundAxis(crossProduct, Math.toRadians(tipRotation)),
         thickness = thickness,
@@ -304,6 +313,7 @@ fun arrowTemplate(
     )
 
     val bottom = lineModel(
+        world = world,
         location = tip,
         vector = tipDirection.rotateAroundAxis(crossProduct, Math.toRadians(-tipRotation)),
         thickness = thickness,

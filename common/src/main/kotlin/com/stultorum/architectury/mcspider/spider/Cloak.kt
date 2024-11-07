@@ -1,24 +1,24 @@
 package com.stultorum.architectury.mcspider.spider
 
-import com.heledron.spideranimation.utilities.*
-import com.stultorum.architectury.mcspider.utilities.DOWN_VECTOR
-import com.stultorum.architectury.mcspider.utilities.EventEmitter
-import com.stultorum.architectury.mcspider.utilities.SeriesScheduler
-import com.stultorum.architectury.mcspider.utilities.runLater
-import org.bukkit.*
-import org.bukkit.block.data.BlockData
-import org.bukkit.util.RayTraceResult
-import java.util.WeakHashMap
+import com.stultorum.architectury.mcspider.utilities.*
+import com.stultorum.architectury.mcspider.utilities.port.AngledPosition
+import net.minecraft.block.Block
+import net.minecraft.block.BlockState
+import net.minecraft.block.Blocks
+import net.minecraft.particle.ParticleTypes
+import net.minecraft.util.hit.BlockHitResult
+import net.minecraft.util.math.Vec2f
+import net.minecraft.world.World
+import java.util.*
 import kotlin.math.abs
 
-// TODO port?
-
+@Deprecated("Doesn't support multiple players")
 class Cloak(var  spider: Spider) : SpiderComponent {
     var active = false
     val onCloakDamage = EventEmitter()
     val onToggle = EventEmitter()
 
-    private var cloakMaterial = WeakHashMap<Pair<Int, Int>, Material>()
+    private var cloakMaterial = WeakHashMap<Pair<Int, Int>, Block>()
     private var cloakGlitching = false
 
     init {
@@ -38,27 +38,26 @@ class Cloak(var  spider: Spider) : SpiderComponent {
             for ((segmentIndex, _) in chain.segments.withIndex()) {
                 val segment = legIndex to segmentIndex
 
-                val location = (chain.segments.getOrNull(segmentIndex - 1)?.position ?: chain.root).toLocation(spider.location.world!!)
-                val vector = chain.segments[segmentIndex].position.clone().subtract(location.toVector())
+                val location = (chain.segments.getOrNull(segmentIndex - 1)?.position ?: chain.root)
+                val vector = chain.segments[segmentIndex].position.subtract(location)
 
                 if (!cloakGlitching) {
                     val otherSegments = (0 until chain.segments.size).map { Pair(legIndex, it) }.filter { it != segment }
 
-                    val centre = location.clone().add(vector.clone().multiply(0.5))
-                    applyCloak(segment, centre, otherSegments)
+                    val centre = location.add(vector.multiply(0.5))
+                    applyCloak(segment, AngledPosition(centre, Vec2f.ZERO), otherSegments)
                 }
-
             }
         }
     }
 
-    fun toggleCloak() {
-        active = !active
-        onToggle.emit()
-    }
+//    fun toggleCloak() {
+//        active = !active
+//        onToggle.emit()
+//    }
 
-    fun getSegment(segment: Pair<Int, Int>): BlockData? {
-        return cloakMaterial[segment]?.createBlockData()
+    fun getSegment(segment: Pair<Int, Int>): BlockState? {
+        return cloakMaterial[segment]?.defaultState
     }
 
 
@@ -76,11 +75,11 @@ class Cloak(var  spider: Spider) : SpiderComponent {
             }
 
             val glitchBlocks = listOf(
-                Material.LIGHT_BLUE_GLAZED_TERRACOTTA,
-//                Material.BLUE_GLAZED_TERRACOTTA,
-                Material.CYAN_GLAZED_TERRACOTTA,
-                Material.WHITE_GLAZED_TERRACOTTA,
-                Material.GRAY_GLAZED_TERRACOTTA,
+                Blocks.LIGHT_BLUE_GLAZED_TERRACOTTA,
+//                Blocks.BLUE_GLAZED_TERRACOTTA,
+                Blocks.CYAN_GLAZED_TERRACOTTA,
+                Blocks.WHITE_GLAZED_TERRACOTTA,
+                Blocks.GRAY_GLAZED_TERRACOTTA,
                 null,
                 originalBlock
             )
@@ -94,8 +93,9 @@ class Cloak(var  spider: Spider) : SpiderComponent {
                     if (Math.random() < .5) {
                         val (legIndex, segmentIndex) = segment
                         val chain = spider.body.legs[legIndex].chain
-                        val location = (chain.segments.getOrNull(segmentIndex - 1)?.position ?: chain.root).toLocation(spider.location.world!!)
-                        spawnParticle(Particle.FISHING, location, (1 * Math.random()).toInt(), .3, .3, .3, 0.0)
+                        val location = (chain.segments.getOrNull(segmentIndex - 1)?.position ?: chain.root)
+                        spider.world.spawnParticle(ParticleTypes.FISHING, location)
+//                      spawnParticle(Particle.FISHING, location, (1 * Math.random()).toInt(), .3, .3, .3, 0.0)
                     }
                 }
 
@@ -128,42 +128,42 @@ class Cloak(var  spider: Spider) : SpiderComponent {
         }
     }
 
-    private fun applyCloak(segment: Pair<Int, Int>, centre: Location, otherSegments: List<Pair<Int, Int>>) {
+    private fun applyCloak(segment: Pair<Int, Int>, centre: AngledPosition, otherSegments: List<Pair<Int, Int>>) {
         val currentMaterial = cloakMaterial[segment]
 
-        if (!spider.cloak.active) {
-            if (currentMaterial != null) {
-                transitionSegmentBlock(
-                    segment,
-                    (Math.random() * 3).toInt(),
-                    (Math.random() * 3).toInt(),
-                    null
-                )
-            }
-            return
-        }
+//        if (!spider.cloak.active) {
+//            if (currentMaterial != null) { // Was !== but that seemed strange; changed to !=
+//                transitionSegmentBlock(
+//                    segment,
+//                    (Math.random() * 3).toInt(),
+//                    (Math.random() * 3).toInt(),
+//                    null
+//                )
+//            }
+//            return
+//        }
 
-        fun groundCast(): RayTraceResult? {
-            return raycastGround(centre, DOWN_VECTOR, 5.0)
+        fun groundCast(): BlockHitResult? {
+            return spider.world.raycastGround(centre, DOWN_VECTOR, 5.0)
         }
-        fun cast(): RayTraceResult? {
-            val targetPlayer = Bukkit.getOnlinePlayers().firstOrNull()
+        fun cast(): BlockHitResult? {
+            val targetPlayer = spider.world.firstPlayer()
             if (targetPlayer != null) {
-                val direction = centre.toVector().subtract(targetPlayer.eyeLocation.toVector())
-                val rayCast = raycastGround(centre, direction, 30.0)
+                val direction = centre.toVec3d().subtract(targetPlayer.eyePos)
+                val rayCast = spider.world.raycastGround(centre, direction, 30.0)
                 if (rayCast != null) return rayCast
             }
             return groundCast()
         }
 
-        val rayTrace = cast()
-        if (rayTrace != null) {
-            val palette = getCloakPalette(rayTrace.hitBlock!!.blockData.material)
+        val hit = cast()
+        if (hit != null) {
+            val palette = getCloakPalette(spider.world.getBlockState(hit.blockPos).block)
             if (palette.isNotEmpty()) {
                 val hash = abs(centre.x.toInt() + centre.z.toInt())
                 val choice = palette[hash % palette.size]
 
-                if (currentMaterial !== choice) {
+                if (currentMaterial != choice) { //
                     val alreadyInPalette = palette.contains(currentMaterial)
                     val doGlitch = Math.random() < 1.0 / 2 || currentMaterial == null
 
@@ -194,14 +194,14 @@ class Cloak(var  spider: Spider) : SpiderComponent {
 
 
     val transitioningSegments = ArrayList<Pair<Int, Int>>()
-    fun transitionSegmentBlock(segment: Pair<Int, Int>, waitTime: Int, glitchTime: Int, newBlock: Material?) {
+    fun transitionSegmentBlock(segment: Pair<Int, Int>, waitTime: Int, glitchTime: Int, newBlock: Block?) {
         if (transitioningSegments.contains(segment)) return
         transitioningSegments.add(segment)
 
         val scheduler = SeriesScheduler()
         scheduler.sleep(waitTime.toLong())
         scheduler.run {
-            cloakMaterial[segment] = Material.GRAY_GLAZED_TERRACOTTA
+            cloakMaterial[segment] = Blocks.GRAY_GLAZED_TERRACOTTA
         }
 
         scheduler.sleep(glitchTime.toLong())
@@ -213,10 +213,11 @@ class Cloak(var  spider: Spider) : SpiderComponent {
 }
 
 
-fun getCloakPalette(material: Material): List<Material> {
+// TODO this should really be refactored to use tags...
+fun getCloakPalette(material: Block): List<Block> {
 
-    fun weighted(vararg pairs: Pair<Material, Int>): List<Material> {
-        val list = mutableListOf<Material>()
+    fun weighted(vararg pairs: Pair<Block, Int>): List<Block> {
+        val list = mutableListOf<Block>()
         for ((option, weight) in pairs) {
             for (i in 0 until weight) list.add(option)
         }
@@ -224,128 +225,170 @@ fun getCloakPalette(material: Material): List<Material> {
     }
 
     val mossLike = listOf(
-        Material.GRASS_BLOCK,
-        Material.OAK_LEAVES,
-        Material.AZALEA_LEAVES,
-        Material.MOSS_BLOCK, Material.MOSS_CARPET
+        Blocks.GRASS_BLOCK,
+        Blocks.OAK_LEAVES,
+        Blocks.AZALEA_LEAVES,
+        Blocks.MOSS_BLOCK,
+        Blocks.MOSS_CARPET
     )
 
     if (mossLike.contains(material)) {
-        return weighted(Material.MOSS_BLOCK to 4, Material.GREEN_SHULKER_BOX to 1)
+        return weighted(Blocks.MOSS_BLOCK to 4, Blocks.GREEN_SHULKER_BOX to 1)
     }
-    if (material == Material.DIRT || material == Material.COARSE_DIRT || material == Material.ROOTED_DIRT) {
-        return listOf(Material.COARSE_DIRT, Material.ROOTED_DIRT)
-    }
-
-    if (material == Material.STONE_BRICKS || material == Material.STONE_BRICK_SLAB || material == Material.STONE_BRICK_STAIRS) {
-        return weighted(Material.STONE_BRICKS to 3, Material.CRACKED_STONE_BRICKS to 1, Material.LIGHT_GRAY_SHULKER_BOX to 1)
+    if (material == Blocks.DIRT || material == Blocks.COARSE_DIRT || material == Blocks.ROOTED_DIRT) {
+        return listOf(Blocks.COARSE_DIRT, Blocks.ROOTED_DIRT)
     }
 
-    if (material == Material.OAK_LOG) {
-        return listOf(Material.OAK_WOOD)
+    if (material == Blocks.STONE_BRICKS || material == Blocks.STONE_BRICK_SLAB || material == Blocks.STONE_BRICK_STAIRS) {
+        return weighted(Blocks.STONE_BRICKS to 3, Blocks.CRACKED_STONE_BRICKS to 1, Blocks.LIGHT_GRAY_SHULKER_BOX to 1)
+    }
+
+    if (material == Blocks.OAK_LOG) {
+        return listOf(Blocks.OAK_WOOD)
     }
 
     val spruceLike = listOf(
-        Material.SPRUCE_LOG, Material.SPRUCE_WOOD, Material.STRIPPED_SPRUCE_LOG, Material.STRIPPED_SPRUCE_WOOD,
-        Material.SPRUCE_PLANKS, Material.SPRUCE_SLAB, Material.SPRUCE_STAIRS, // Material.SPRUCE_FENCE, Material.SPRUCE_FENCE_GATE,
-        Material.SPRUCE_TRAPDOOR, Material.SPRUCE_DOOR, Material.COMPOSTER, Material.BARREL
+        Blocks.SPRUCE_LOG,
+        Blocks.SPRUCE_WOOD,
+        Blocks.STRIPPED_SPRUCE_LOG,
+        Blocks.STRIPPED_SPRUCE_WOOD,
+        Blocks.SPRUCE_PLANKS,
+        Blocks.SPRUCE_SLAB,
+        Blocks.SPRUCE_STAIRS,
+        // Blocks.SPRUCE_FENCE,
+        // Blocks.SPRUCE_FENCE_GATE,
+        Blocks.SPRUCE_TRAPDOOR,
+        Blocks.SPRUCE_DOOR,
+        Blocks.COMPOSTER,
+        Blocks.BARREL
     )
 
     if (spruceLike.contains(material)) {
-        return weighted(Material.SPRUCE_PLANKS to 3, Material.STRIPPED_SPRUCE_WOOD to 1)
+        return weighted(Blocks.SPRUCE_PLANKS to 3, Blocks.STRIPPED_SPRUCE_WOOD to 1)
     }
 
-    if (material === Material.DIRT_PATH) {
-        return listOf(Material.STRIPPED_OAK_WOOD)
+    if (material == Blocks.DIRT_PATH) { // Was === but that seemed strange; changed to ==
+        return listOf(Blocks.STRIPPED_OAK_WOOD)
     }
 
-    if (material == Material.DEEPSLATE_TILES || material == Material.DEEPSLATE_BRICKS || material == Material.DEEPSLATE || material == Material.POLISHED_DEEPSLATE_SLAB) {
-        return listOf(Material.DEEPSLATE, Material.DEEPSLATE_BRICKS, Material.DEEPSLATE_TILES)
+    if (material == Blocks.DEEPSLATE_TILES || material == Blocks.DEEPSLATE_BRICKS || material == Blocks.DEEPSLATE || material == Blocks.POLISHED_DEEPSLATE_SLAB) {
+        return listOf(Blocks.DEEPSLATE, Blocks.DEEPSLATE_BRICKS, Blocks.DEEPSLATE_TILES)
     }
 
-    if (material === Material.SAND) {
-        return weighted(Material.SAND to 4, Material.SANDSTONE to 1)
+    if (material == Blocks.SAND) { // Was === but that seemed strange; changed to ==
+        return weighted(Blocks.SAND to 4, Blocks.SANDSTONE to 1)
     }
 
     val deepSlateLike = listOf(
-        Material.POLISHED_DEEPSLATE, Material.POLISHED_DEEPSLATE_SLAB, Material.POLISHED_DEEPSLATE_STAIRS, // Material.POLISHED_DEEPSLATE_WALL,
-        Material.DEEPSLATE_TILES, Material.DEEPSLATE_TILE_SLAB, Material.DEEPSLATE_TILE_STAIRS, // Material.DEEPSLATE_TILE_WALL,
-        Material.DEEPSLATE_BRICKS, Material.DEEPSLATE_BRICK_SLAB, Material.DEEPSLATE_BRICK_STAIRS, // Material.DEEPSLATE_BRICK_WALL,
-        Material.ANVIL,
-        Material.POLISHED_BASALT, Material.BASALT
+        Blocks.POLISHED_DEEPSLATE,
+        Blocks.POLISHED_DEEPSLATE_SLAB,
+        Blocks.POLISHED_DEEPSLATE_STAIRS,
+        // Blocks.POLISHED_DEEPSLATE_WALL,
+        Blocks.DEEPSLATE_TILES,
+        Blocks.DEEPSLATE_TILE_SLAB,
+        Blocks.DEEPSLATE_TILE_STAIRS,
+        // Blocks.DEEPSLATE_TILE_WALL,
+        Blocks.DEEPSLATE_BRICKS,
+        Blocks.DEEPSLATE_BRICK_SLAB,
+        Blocks.DEEPSLATE_BRICK_STAIRS,
+        // Blocks.DEEPSLATE_BRICK_WALL,
+        Blocks.ANVIL,
+        Blocks.POLISHED_BASALT,
+        Blocks.BASALT
     )
 
     if (deepSlateLike.contains(material)) {
-        return weighted(Material.POLISHED_DEEPSLATE to 3, Material.DEEPSLATE_TILES to 1)
+        return weighted(Blocks.POLISHED_DEEPSLATE to 3, Blocks.DEEPSLATE_TILES to 1)
     }
 
     val stoneLike = listOf(
-        Material.ANDESITE, Material.ANDESITE_SLAB, Material.ANDESITE_STAIRS, // Material.ANDESITE_WALL,
-        Material.POLISHED_ANDESITE, Material.POLISHED_ANDESITE_SLAB, Material.POLISHED_ANDESITE_STAIRS,
-        Material.COBBLESTONE, Material.COBBLESTONE_SLAB, Material.COBBLESTONE_STAIRS, // Material.COBBLESTONE_WALL,
-        Material.STONE, Material.STONE_SLAB, Material.STONE_STAIRS,
-        Material.GRAVEL,
+        Blocks.ANDESITE,
+        Blocks.ANDESITE_SLAB,
+        Blocks.ANDESITE_STAIRS,
+        // Blocks.ANDESITE_WALL,
+        Blocks.POLISHED_ANDESITE,
+        Blocks.POLISHED_ANDESITE_SLAB,
+        Blocks.POLISHED_ANDESITE_STAIRS,
+        Blocks.COBBLESTONE,
+        Blocks.COBBLESTONE_SLAB,
+        Blocks.COBBLESTONE_STAIRS,
+        // Blocks.COBBLESTONE_WALL,
+        Blocks.STONE,
+        Blocks.STONE_SLAB,
+        Blocks.STONE_STAIRS,
+        Blocks.GRAVEL,
     )
 
     if (stoneLike.contains(material)) {
-        return listOf(Material.ANDESITE, Material.ANDESITE, Material.GRAVEL)
+        return listOf(Blocks.ANDESITE, Blocks.ANDESITE, Blocks.GRAVEL)
     }
 
-    if (material == Material.NETHERITE_BLOCK) {
-        return listOf(Material.NETHERITE_BLOCK)
+    if (material == Blocks.NETHERITE_BLOCK) {
+        return listOf(Blocks.NETHERITE_BLOCK)
     }
 
-    if (material == Material.DARK_PRISMARINE || material == Material.DARK_PRISMARINE_SLAB || material == Material.DARK_PRISMARINE_STAIRS) {
-        return listOf(Material.DARK_PRISMARINE)
+    if (material == Blocks.DARK_PRISMARINE || material == Blocks.DARK_PRISMARINE_SLAB || material == Blocks.DARK_PRISMARINE_STAIRS) {
+        return listOf(Blocks.DARK_PRISMARINE)
     }
 
-    if (material == Material.MUD_BRICKS || material == Material.MUD_BRICK_SLAB || material == Material.MUD_BRICK_STAIRS/* || material == Material.MUD_BRICK_WALL*/) {
-        return listOf(Material.MUD_BRICKS)
+    if (material == Blocks.MUD_BRICKS || material == Blocks.MUD_BRICK_SLAB || material == Blocks.MUD_BRICK_STAIRS/* || material == Blocks.MUD_BRICK_WALL*/) {
+        return listOf(Blocks.MUD_BRICKS)
     }
 
-    if (material == Material.RED_CONCRETE) {
+    if (material == Blocks.RED_CONCRETE) {
         return listOf(material)
     }
 
     val copper = listOf(
-        Material.WAXED_EXPOSED_COPPER, Material.WAXED_EXPOSED_CUT_COPPER,
-        Material.WAXED_EXPOSED_COPPER_BULB, Material.WAXED_EXPOSED_CHISELED_COPPER,
-        Material.WAXED_EXPOSED_CUT_COPPER_SLAB, Material.WAXED_EXPOSED_CUT_COPPER_STAIRS,
-        Material.WAXED_EXPOSED_COPPER_TRAPDOOR, Material.LIGHTNING_ROD
+        Blocks.WAXED_EXPOSED_COPPER,
+        Blocks.WAXED_EXPOSED_CUT_COPPER,
+        Blocks.WAXED_EXPOSED_COPPER_BULB,
+        Blocks.WAXED_EXPOSED_CHISELED_COPPER,
+        Blocks.WAXED_EXPOSED_CUT_COPPER_SLAB,
+        Blocks.WAXED_EXPOSED_CUT_COPPER_STAIRS,
+        Blocks.WAXED_EXPOSED_COPPER_TRAPDOOR,
+        Blocks.LIGHTNING_ROD
     )
 
     if (copper.contains(material)) {
-        return listOf(Material.WAXED_EXPOSED_COPPER, Material.WAXED_EXPOSED_CUT_COPPER)
+        return listOf(Blocks.WAXED_EXPOSED_COPPER, Blocks.WAXED_EXPOSED_CUT_COPPER)
     }
 
-    if (material == Material.YELLOW_CONCRETE || material == Material.YELLOW_TERRACOTTA) {
-        return listOf(Material.YELLOW_TERRACOTTA, Material.YELLOW_CONCRETE, Material.YELLOW_SHULKER_BOX)
+    if (material == Blocks.YELLOW_CONCRETE || material == Blocks.YELLOW_TERRACOTTA) {
+        return listOf(Blocks.YELLOW_TERRACOTTA, Blocks.YELLOW_CONCRETE, Blocks.YELLOW_SHULKER_BOX)
     }
 
     val tuffLike = listOf(
-        Material.TUFF, Material.TUFF_SLAB, Material.TUFF_STAIRS, Material.CHISELED_TUFF,
-        Material.TUFF_BRICKS, Material.TUFF_BRICK_SLAB, Material.TUFF_BRICK_STAIRS,
-        Material.POLISHED_TUFF, Material.POLISHED_TUFF_SLAB, Material.POLISHED_TUFF_STAIRS
-    );
+        Blocks.TUFF,
+        Blocks.TUFF_SLAB,
+        Blocks.TUFF_STAIRS,
+        Blocks.CHISELED_TUFF,
+        Blocks.TUFF_BRICKS,
+        Blocks.TUFF_BRICK_SLAB,
+        Blocks.TUFF_BRICK_STAIRS,
+        Blocks.POLISHED_TUFF,
+        Blocks.POLISHED_TUFF_SLAB,
+        Blocks.POLISHED_TUFF_STAIRS
+    )
 
     if (tuffLike.contains(material)) {
-        return weighted(Material.POLISHED_TUFF to 2, Material.GRAY_SHULKER_BOX to 1)
+        return weighted(Blocks.POLISHED_TUFF to 2, Blocks.GRAY_SHULKER_BOX to 1)
     }
 
     return listOf()
 }
 
 
-fun getCloakSkyBlock(world: World): Material {
+fun getCloakSkyBlock(world: World): Block {
     val time = world.time
 
     if (time in 13188..22812) {
-        return Material.BLACK_CONCRETE
+        return Blocks.BLACK_CONCRETE
     }
 
     if (time in 12542..23460) {
-        return Material.CYAN_CONCRETE
+        return Blocks.CYAN_CONCRETE
     }
 
-    return Material.LIGHT_BLUE_CONCRETE
+    return Blocks.LIGHT_BLUE_CONCRETE
 }

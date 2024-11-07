@@ -8,6 +8,7 @@ import com.stultorum.architectury.mcspider.spider.BodyPlan
 import com.stultorum.architectury.mcspider.utilities.port.SettingNameSuggester
 import com.stultorum.architectury.mcspider.utilities.port.StringSuggester
 import net.minecraft.text.Text
+import net.minecraft.world.World
 import net.minecraft.server.command.CommandManager.literal as commandLiteral
 import net.minecraft.server.command.ServerCommandSource as SCS
 
@@ -38,7 +39,7 @@ internal val spiderCommand = commandLiteral("spider").requires { it.hasPermissio
                     ctx.source.sendError(Text.of("Spider: Unknown bodyplan $type"))
                     return@executes 0
                 }
-                setBodyPlan(McSpider.bodyPlans[type]!!)
+                setBodyPlan(ctx.source.world, McSpider.bodyPlans[type]!!)
                 ctx.source.sendFeedback({ Text.of("Spider: Body plan updated") }, true)
                 return@executes 1
             }
@@ -50,7 +51,7 @@ internal val spiderCommand = commandLiteral("spider").requires { it.hasPermissio
                         ctx.source.sendError(Text.of("Spider: Unknown bodyplan $type"))
                         return@executes 0
                     }
-                    setBodyPlan(McSpider.bodyPlans[type]!!, scale)
+                    setBodyPlan(ctx.source.world, McSpider.bodyPlans[type]!!, scale)
                     ctx.source.sendFeedback({ Text.of("Spider: Body plan updated") }, true)
                     return@executes 1
                 }
@@ -63,7 +64,7 @@ internal val spiderCommand = commandLiteral("spider").requires { it.hasPermissio
                             ctx.source.sendError(Text.of("Spider: Unknown bodyplan $type"))
                             return@executes 0
                         }
-                        setBodyPlan(McSpider.bodyPlans[type]!!, scale, segments)
+                        setBodyPlan(ctx.source.world, McSpider.bodyPlans[type]!!, scale, segments)
                         ctx.source.sendFeedback({ Text.of("Spider: Body plan updated") }, true)
                         return@executes 1
                     }
@@ -77,7 +78,7 @@ internal val spiderCommand = commandLiteral("spider").requires { it.hasPermissio
                                 ctx.source.sendError(Text.of("Spider: Unknown bodyplan $type"))
                                 return@executes 0
                             }
-                            setBodyPlan(McSpider.bodyPlans[type]!!, scale, segments, segmentLength)
+                            setBodyPlan(ctx.source.world, McSpider.bodyPlans[type]!!, scale, segments, segmentLength)
                             ctx.source.sendFeedback({ Text.of("Spider: Body plan updated") }, true)
                             return@executes 1
                         }
@@ -151,7 +152,7 @@ internal val spiderCommand = commandLiteral("spider").requires { it.hasPermissio
         )
     )
 
-private fun setBodyPlan(constr: (Int, Double) -> BodyPlan, scale: Double = 1.0, segments: Int = 3, segmentLength: Double = 1.0) {
+private fun setBodyPlan(world: World, constr: (Int, Double) -> BodyPlan, scale: Double = 1.0, segments: Int = 3, segmentLength: Double = 1.0) {
     val oldScale = McSpiderState.bodyPlan.storedScale
     McSpiderState.bodyPlan = constr(segments, segmentLength).apply { scale(scale) }
 
@@ -159,7 +160,7 @@ private fun setBodyPlan(constr: (Int, Double) -> BodyPlan, scale: Double = 1.0, 
     McSpiderState.gaitGallop.scale(scale / oldScale)
 
     val spider = McSpiderState.spider
-    if (spider != null) McSpiderState.createSpider(spider.location)
+    if (spider != null) McSpiderState.createSpider(world, spider.location)
 
     // TODO config
 }

@@ -6,6 +6,7 @@ import com.stultorum.architectury.mcspider.spider.SpiderDebugOptions
 import com.stultorum.architectury.mcspider.spider.quadrupedBodyPlan
 import com.stultorum.architectury.mcspider.utilities.KinematicChainVisualizer
 import com.stultorum.architectury.mcspider.utilities.port.AngledPosition
+import net.minecraft.world.World
 
 object McSpiderState {
     var showDebugVisuals = true
@@ -32,9 +33,9 @@ object McSpiderState {
 
     var bodyPlan = quadrupedBodyPlan(segmentCount = 3, segmentLength = 1.0)
 
-    fun createSpider(location: AngledPosition): Spider {
+    fun createSpider(world: World, location: AngledPosition): Spider {
         location.y += gaitWalk.bodyHeight
-        return Spider(location, bodyPlan)
+        return Spider(world, location, bodyPlan)
     }
 
     fun update() {

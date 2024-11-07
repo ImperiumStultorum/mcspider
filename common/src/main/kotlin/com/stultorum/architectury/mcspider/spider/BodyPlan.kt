@@ -1,12 +1,12 @@
 package com.stultorum.architectury.mcspider.spider
 
-import org.bukkit.util.Vector
-
-// TODO port
+import com.stultorum.architectury.mcspider.utilities.port.times
+import net.minecraft.util.Identifier
+import net.minecraft.util.math.Vec3d
 
 class LegPlan(
-    var attachmentPosition: Vector,
-    var restPosition: Vector,
+    var attachmentPosition: Vec3d,
+    var restPosition: Vec3d,
     var segments: List<SegmentPlan>,
 )
 
@@ -22,21 +22,21 @@ class BodyPlan {
     var storedScale: Double = 1.0
     var legs: List<LegPlan> = emptyList()
 
-    var material = "minecraft:netherite_block"
+    var material: Identifier = Identifier.ofVanilla("netherite_block")
     var straightenLegs = true
     var legStraightenRotation = -60.0
     var renderSegmentThickness = 1.0
 
     fun addPair(rootX: Double, rootZ: Double, restX: Double, restZ: Double, segmentCount: Int, segmentLength: Double) {
-        legs += LegPlan(Vector(rootX, 0.0, rootZ), Vector(restX, 0.0, restZ), SegmentPlan.equalLength(segmentCount, segmentLength))
-        legs += LegPlan(Vector(-rootX, 0.0, rootZ), Vector(-restX, 0.0, restZ), SegmentPlan.equalLength(segmentCount, segmentLength))
+        legs += LegPlan(Vec3d(rootX, 0.0, rootZ), Vec3d(restX, 0.0, restZ), SegmentPlan.equalLength(segmentCount, segmentLength))
+        legs += LegPlan(Vec3d(-rootX, 0.0, rootZ), Vec3d(-restX, 0.0, restZ), SegmentPlan.equalLength(segmentCount, segmentLength))
     }
 
     fun scale(scale: Double) {
         this.storedScale *= scale
         legs.forEach {
-            it.attachmentPosition.multiply(scale)
-            it.restPosition.multiply(scale)
+            it.attachmentPosition *= scale
+            it.restPosition *= scale
             it.segments.forEach { segment ->
                 segment.length *= scale
             }

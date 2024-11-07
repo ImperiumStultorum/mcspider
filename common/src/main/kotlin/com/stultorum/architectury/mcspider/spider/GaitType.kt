@@ -1,7 +1,5 @@
 package com.stultorum.architectury.mcspider.spider
 
-// TODO port
-
 object WalkGaitType {
     fun canMoveLeg(leg: Leg): Boolean {
         val spider = leg.spider
@@ -23,7 +21,7 @@ object WalkGaitType {
         if (diagonal.any { hasCooldown(it, spider.gait.legWalkCooldown) }) return false
 
         val wantsToMove = leg.isOutsideTriggerZone || !leg.touchingGround
-        val alreadyAtTarget = leg.endEffector.distanceSquared(leg.target.position) < 0.01
+        val alreadyAtTarget = leg.endEffector.squaredDistanceTo(leg.target.position) < 0.01
         val onGround = spider.body.legs.any { it.isGrounded() } || spider.body.onGround
 
         return wantsToMove && !alreadyAtTarget && onGround

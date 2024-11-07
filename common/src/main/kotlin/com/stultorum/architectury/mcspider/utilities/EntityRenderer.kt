@@ -13,6 +13,8 @@ import net.minecraft.world.World
 import org.joml.Matrix4f
 import java.io.Closeable
 
+// TODO can this use Vec3d instead of AngledPosition
+
 class ModelPart <T : Entity> (
     val clazz : Class<T>,
     val type: EntityType<T>,

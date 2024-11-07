@@ -16,7 +16,6 @@ class StringSuggester(private val strings: Array<out String>): SuggestionProvide
         strings.filter { CommandSource.shouldSuggest(remaining, it) }.forEach { builder.suggest(it) }
         return builder.buildFuture()
     }
-    constructor(vararg strings: String): this(strings)
 }
 
 class SettingNameSuggester: SuggestionProvider<SCS> {

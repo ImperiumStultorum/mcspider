@@ -4,7 +4,7 @@ import com.stultorum.architectury.mcspider.utilities.port.distance
 import net.minecraft.util.math.Vec3d
 
 class KinematicChain(
-        val root: Vec3d,
+        var root: Vec3d,
         val segments: MutableList<ChainSegment>
 ) {
     fun fabrik(target: Vec3d) {

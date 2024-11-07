@@ -14,6 +14,7 @@ import net.minecraft.entity.decoration.DisplayEntity
 import net.minecraft.entity.decoration.DisplayEntity.BlockDisplayEntity
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.item.ItemStack
+import net.minecraft.particle.ParticleEffect
 import net.minecraft.text.Text
 import net.minecraft.util.Hand
 import net.minecraft.util.hit.BlockHitResult
@@ -27,6 +28,7 @@ import org.joml.Quaternionf
 import org.joml.Vector3f
 import java.io.Closeable
 
+// TODO how many of these can be changed to use Vec3d instead of AngledPosition
 
 fun runLater(delay: Long, task: () -> Unit): Closeable {
     return runTaskLater(delay) { task.invoke() }
@@ -95,7 +97,7 @@ class EventEmitter {
 }
 
 fun World.firstPlayer(): PlayerEntity? {
-    return this.server!!.playerManager.playerList.firstOrNull()!!
+    return this.server!!.playerManager.playerList.firstOrNull()
 }
 
 fun World.sendDebugMessage(message: String) {
@@ -161,4 +163,9 @@ fun applyTransformationWithInterpolation(entity: BlockDisplayEntity, transformat
 
 fun applyTransformationWithInterpolation(entity: BlockDisplayEntity, matrix: Matrix4f) {
     applyTransformationWithInterpolation(entity, transformFromMatrix(matrix))
+}
+
+// TODO should handle things like spawning several in close proximity like in https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/World.html#spawnParticle(org.bukkit.Particle,org.bukkit.Location,int,double,double,double,double)
+fun World.spawnParticle(type: ParticleEffect, location: Vec3d = Vec3d.ZERO, velocity: Vec3d = Vec3d.ZERO) {
+    addParticle(type, location.x, location.y, location.z, velocity.x, velocity.y, velocity.z)
 }

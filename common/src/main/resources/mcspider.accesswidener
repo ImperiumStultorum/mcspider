@@ -9,3 +9,5 @@ accessible method net/minecraft/entity/decoration/DisplayEntity setBrightness (L
 accessible method net/minecraft/entity/decoration/DisplayEntity setBillboardMode (Lnet/minecraft/entity/decoration/DisplayEntity$BillboardMode;)V
 accessible method net/minecraft/entity/decoration/DisplayEntity$BlockDisplayEntity setBlockState (Lnet/minecraft/block/BlockState;)V
 accessible method net/minecraft/entity/decoration/DisplayEntity$TextDisplayEntity setText (Lnet/minecraft/text/Text;)V
+# End of DisplayEntity methods
+accessible field net/minecraft/entity/passive/PigEntity saddledComponent Lnet/minecraft/entity/SaddledComponent;

@@ -1,11 +1,12 @@
 package com.stultorum.architectury.mcspider.spider
 
 import com.stultorum.architectury.mcspider.utilities.MultiModelRenderer
-import com.heledron.spideranimation.utilities.spawnParticle
-import org.bukkit.Color
-import org.bukkit.Location
-import org.bukkit.Particle
-import org.bukkit.util.Vector
+import com.stultorum.architectury.mcspider.utilities.port.distance
+import com.stultorum.architectury.mcspider.utilities.spawnParticle
+import net.minecraft.particle.DustParticleEffect
+import net.minecraft.particle.ParticleTypes
+import net.minecraft.util.math.Vec3d
+import net.minecraft.world.World
 
 // todo port?
 
@@ -29,35 +30,36 @@ class SpiderParticleRenderer(val spider: Spider): SpiderComponent {
     }
 
     companion object {
-        fun renderTarget(location: Location) {
-            spawnParticle(Particle.DUST, location, 1, 0.0, 0.0, 0.0, 0.0, Particle.DustOptions(Color.RED, 1f))
+        fun renderTarget(world: World, location: Vec3d) {
+            world.spawnParticle(DustParticleEffect(DustParticleEffect.RED, 1f), location)
         }
 
         fun renderSpider(spider: Spider) {
             for (leg in spider.body.legs) {
-                val world = leg.spider.location.world!!
+                val world = leg.spider.world
                 val chain = leg.chain
-                var current = chain.root.toLocation(world)
+                var current = chain.root
 
                 for ((i, segment) in chain.segments.withIndex()) {
                     val thickness = (chain.segments.size - i - 1) * 0.025
-                    renderLine(current, segment.position, thickness)
-                    current = segment.position.toLocation(world)
+                    renderLine(world, current, segment.position, thickness)
+                    current = segment.position
                 }
             }
         }
 
-        fun renderLine(point1: Location, point2: Vector, thickness: Double) {
+        fun renderLine(world: World, point1: Vec3d, point2: Vec3d, thickness: Double) {
+            // todo reimpl thickness
             val gap = .05
 
-            val amount = point1.toVector().distance(point2) / gap
-            val step = point2.clone().subtract(point1.toVector()).multiply(1 / amount)
+            val amount = point1.distance(point2) / gap
+            val step = point2.subtract(point1).multiply(1 / amount)
 
-            val current = point1.clone()
+            var current = point1
 
             for (i in 0..amount.toInt()) {
-                spawnParticle(Particle.BUBBLE, current, 1, thickness, thickness, thickness, 0.0)
-                current.add(step)
+                world.spawnParticle(ParticleTypes.BUBBLE, current)
+                current = current.add(step)
             }
         }
     }
